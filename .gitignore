@@ -1,0 +1,51 @@
+# Environments and secrets
+.env
+.env.local
+*.env
+*.env.*
+
+# Python Virtual Environment & Caches
+.venv/
+*/.venv/
+__pycache__/
+*/__pycache__/
+*.pyc
+chroma_db/
+*/chroma_db/
+
+# Java & Spring Boot Build Output & Persistent Database
+target/
+*/target/
+*.class
+data/
+*/data/
+*.mv.db
+*.trace.db
+
+# Build and runtime logs
+*.log
+*/backend_run.log
+*/backend_restart.log
+*/build.log
+*/build_clean.log
+*/build_package.log
+*/build_output.txt
+*/compile_log.txt
+
+# Node & Frontend Build Output
+node_modules/
+*/node_modules/
+dist/
+*/dist/
+
+# OS & IDE Files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Ensure documentation and course PDFs are tracked
+!docs/
+!docs/course-pdfs/
+!docs/course-pdfs/*.pdf

@@ -103,7 +103,7 @@ function App() {
           />
           <Route
             path="/verify-otp"
-            element={!isAuthenticated ? <VerifyOtp /> : <Navigate to="/dashboard" />}
+            element={<Navigate to="/login" replace />}
           />
 
           {/* Certificate Verification (Public) */}

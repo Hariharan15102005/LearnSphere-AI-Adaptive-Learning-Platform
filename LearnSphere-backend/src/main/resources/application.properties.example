@@ -1,0 +1,53 @@
+spring.application.name=LearnSphere-Platform
+server.port=8080
+
+# Database Configuration (H2 persistent local database with AUTO_SERVER mode)
+spring.datasource.url=jdbc:h2:file:./data/learnspheredb;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1
+spring.datasource.driver-class-name=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=false
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2-console
+
+# CORS Configuration
+cors.allowed-origins=http://localhost:5173,http://localhost:3000,http://localhost:8080
+
+# JWT Security Configuration
+jwt.secret=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+jwt.expiration=86400000
+jwt.refresh.expiration=604800000
+
+# File Upload Configuration
+file.upload-dir=uploads
+spring.servlet.multipart.max-file-size=50MB
+spring.servlet.multipart.max-request-size=50MB
+
+# Google Gemini AI Integration
+gemini.api.key=${GEMINI_API_KEY:your_gemini_api_key_here}
+
+# AWS S3 Storage (Placeholder defaults for local run)
+aws.region=ap-south-1
+aws.access-key=placeholder_access_key
+aws.secret-key=placeholder_secret_key
+aws.s3.bucket-name=learnsphere-storage
+
+# Razorpay Payment Gateway (Placeholder defaults)
+razorpay.key_id=rzp_test_placeholder
+razorpay.key_secret=placeholder_secret
+
+# Email Configuration
+spring.mail.host=${SPRING_MAIL_HOST:smtp.gmail.com}
+spring.mail.port=${SPRING_MAIL_PORT:587}
+spring.mail.username=${SPRING_MAIL_USERNAME:placeholder@example.com}
+spring.mail.password=${SPRING_MAIL_PASSWORD:placeholder}
+spring.mail.default-encoding=UTF-8
+spring.mail.properties.mail.smtp.auth=true
+spring.mail.properties.mail.smtp.starttls.enable=true
+spring.mail.properties.mail.smtp.starttls.required=true
+spring.mail.properties.mail.smtp.ssl.trust=smtp.gmail.com
+spring.mail.properties.mail.smtp.connectiontimeout=5000
+spring.mail.properties.mail.smtp.timeout=5000
+spring.mail.properties.mail.smtp.writetimeout=5000

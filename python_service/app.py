@@ -15,6 +15,11 @@ import traceback
 from ml_predictor import ml_predictor
 from mcp_server import LearnSphereMCPServer
 from agents import MultiAgentEngine
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 
 app = Flask(__name__)
 CORS(app)
@@ -66,7 +71,7 @@ collection = chroma_client.get_or_create_collection(
 # ============================================================
 # GENERATION MODEL & AGENT INITIALIZATION
 # ============================================================
-GENERATION_MODEL = "gemini-2.5-flash"
+GENERATION_MODEL = "gemini-3.6-flash"
 
 mcp_server = LearnSphereMCPServer(
     chroma_collection=collection,

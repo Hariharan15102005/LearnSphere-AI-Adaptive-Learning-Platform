@@ -17,7 +17,7 @@ class MultiAgentEngine:
         self.client = gemini_client
         self.mcp = mcp_server
         self.collection = chroma_collection
-        self.generation_model = "gemini-2.5-flash"
+        self.generation_model = "gemini-3.6-flash"
 
     def run_autonomous_course_builder(self, topic: str, target_audience: str = "Students & Developers") -> dict:
         """

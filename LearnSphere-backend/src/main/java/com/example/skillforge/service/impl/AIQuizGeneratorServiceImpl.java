@@ -23,10 +23,13 @@ public class AIQuizGeneratorServiceImpl implements AIQuizGeneratorService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // Use a model that supports generateContent (from your models list).
-    // I suggest gemini-2.5-flash or gemini-2.5-flash-latest depending on availability.
-    private static final String GEMINI_URL =
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+    // Active verified Gemini models supporting generateContent with fallback
+    private static final String[] CANDIDATE_MODELS = {
+            "gemini-3.6-flash",
+            "gemini-3-flash-preview",
+            "gemini-3.1-flash-lite",
+            "gemini-3.8-flash"
+    };
 
     @Override
     public AIQuizResponse generateQuestions(AIQuizGenerationRequest request) {
@@ -37,46 +40,61 @@ public class AIQuizGeneratorServiceImpl implements AIQuizGeneratorService {
     // This must match the interface signature exactly.
     @Override
     public AIQuizResponse generateQuiz(AIQuizGenerationRequest req) {
-        try {
-            String prompt = buildSafePrompt(req);
+        String prompt = buildSafePrompt(req);
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+                .readTimeout(25, java.util.concurrent.TimeUnit.SECONDS)
+                .build();
 
-            OkHttpClient client = new OkHttpClient();
+        String payload = "{\"contents\":[{\"parts\":[{\"text\":\"" +
+                prompt.replace("\"", "\\\"") +
+                "\"}]}]}";
 
-            String payload = "{\"contents\":[{\"parts\":[{\"text\":\"" +
-                    prompt.replace("\"", "\\\"") +
-                    "\"}]}]}";
+        RequestBody body = RequestBody.create(
+                payload,
+                MediaType.parse("application/json")
+        );
 
-            RequestBody body = RequestBody.create(
-                    payload,
-                    MediaType.parse("application/json")
-            );
+        Exception lastException = null;
 
-            HttpUrl url = HttpUrl.parse(GEMINI_URL)
-                    .newBuilder()
-                    .addQueryParameter("key", geminiApiKey)
-                    .build();
+        for (String modelName : CANDIDATE_MODELS) {
+            try {
+                String modelUrl = "https://generativelanguage.googleapis.com/v1beta/models/" + modelName + ":generateContent";
+                HttpUrl url = HttpUrl.parse(modelUrl)
+                        .newBuilder()
+                        .addQueryParameter("key", geminiApiKey)
+                        .build();
 
-            Request request = new Request.Builder()
-                    .url(url)
-                    .post(body)
-                    .build();
+                Request request = new Request.Builder()
+                        .url(url)
+                        .post(body)
+                        .build();
 
-            Response response = client.newCall(request).execute();
+                Response response = client.newCall(request).execute();
 
-            if (response.body() == null) {
-                log.error("Gemini returned empty body (null)");
-                throw new RuntimeException("Gemini returned empty response");
+                if (response.body() == null) {
+                    log.warn("Gemini model {} returned null body. Trying next candidate...", modelName);
+                    continue;
+                }
+
+                String responseBody = response.body().string();
+                log.info("Gemini API Response from [{}]: {}", modelName, responseBody);
+
+                if (!response.isSuccessful() && (response.code() == 503 || response.code() == 429 || response.code() == 404)) {
+                    log.warn("Gemini model {} returned HTTP {}. Trying next candidate...", modelName, response.code());
+                    continue;
+                }
+
+                return parseGeminiResponse(responseBody);
+
+            } catch (Exception e) {
+                log.warn("Gemini model {} failed with: {}. Trying next candidate...", modelName, e.getMessage());
+                lastException = e;
             }
-
-            String responseBody = response.body().string();
-            log.info("Gemini API Response: {}", responseBody);
-
-            return parseGeminiResponse(responseBody);
-
-        } catch (Exception e) {
-            log.error("AI Quiz Generation Error:", e);
-            throw new RuntimeException("Failed to generate quiz from Gemini: " + e.getMessage(), e);
         }
+
+        log.error("All candidate Gemini models failed for AI Quiz generation.");
+        throw new RuntimeException("Failed to generate quiz from Gemini: " + (lastException != null ? lastException.getMessage() : "All models unavailable"), lastException);
     }
 
     private String buildSafePrompt(AIQuizGenerationRequest req) {

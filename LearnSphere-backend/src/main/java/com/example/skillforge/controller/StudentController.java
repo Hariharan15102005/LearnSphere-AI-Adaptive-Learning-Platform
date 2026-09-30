@@ -20,6 +20,7 @@ public class StudentController {
 
     private final com.example.skillforge.service.UserActivityService userActivityService;
     private final com.example.skillforge.repository.StudentRepository studentRepository;
+    private final com.example.skillforge.repository.EnrollmentRepository enrollmentRepository;
 
     /**
      * Get student dashboard data
@@ -69,10 +70,11 @@ public class StudentController {
                 .orElseThrow(() -> new RuntimeException("Student profile not found"));
 
         int streak = userActivityService.calculateStreak(student.getUser().getId());
+        long completedCourses = enrollmentRepository.findByStudentIdAndIsCompletedTrue(student.getId()).size();
 
         Map<String, Object> data = new HashMap<>();
         data.put("coursesEnrolled", student.getCoursesEnrolled());
-        data.put("coursesCompleted", 2); // TODO: Calculate real value
+        data.put("coursesCompleted", completedCourses);
         data.put("quizzesTaken", student.getQuizzesAttempted());
         data.put("averageScore", student.getAverageScore());
         data.put("currentStreak", streak);

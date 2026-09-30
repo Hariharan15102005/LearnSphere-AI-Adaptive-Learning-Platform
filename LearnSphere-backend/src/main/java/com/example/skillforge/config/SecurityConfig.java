@@ -36,38 +36,47 @@ public class SecurityConfig {
                 .headers(headers -> headers
                         .frameOptions(frame -> frame.disable()))
                 .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/api/public/**",
                                 "/api/health",
                                 "/health",
-                                "/api/materials/**",
                                 "/api/files/**",
-                                "/api/progress/material/complete",
-                                "/api/progress/topic/add-time",
-                                "/api/progress/topic/complete",
-                                "/api/progress/student/**",
-                                "/api/adaptive/next-topic",
-                                "/api/topics/**",
-                                "/api/enrollments/**",
-                                "/api/progress/**",
                                 "/api/certificates/public/**",
+                                "/api/adaptive/next-topic",
                                 "/api/agents/**",
                                 "/error")
-                        .permitAll() // ALL UNPROTECTED ENDPOINTS HERE
-
-                        // Allow public access to view courses (GET only)
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/courses", "/api/courses/**")
                         .permitAll()
 
-                        .requestMatchers("/api/materials/view-pdf/**").permitAll() // ✅ Allow PDF viewing
-                        .requestMatchers("/api/test/**").permitAll()
-                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
-                        .requestMatchers("/api/materials/link").hasAnyAuthority("ROLE_INSTRUCTOR", "ROLE_ADMIN")
-                        .requestMatchers("/api/quizzes/**")
-                        .hasAnyAuthority("ROLE_STUDENT", "ROLE_INSTRUCTOR", "ROLE_ADMIN")
+                        // Public read-only access for courses and materials
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/courses", "/api/courses/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/materials/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/topics/**").permitAll()
 
-                        // Analytics
+                        // Material & Topic management (Instructor & Admin only)
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/materials/**").hasAnyAuthority("ROLE_INSTRUCTOR", "ROLE_ADMIN")
+                        .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/materials/**").hasAnyAuthority("ROLE_INSTRUCTOR", "ROLE_ADMIN")
+                        .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/materials/**").hasAnyAuthority("ROLE_INSTRUCTOR", "ROLE_ADMIN")
+
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/topics/**").hasAnyAuthority("ROLE_INSTRUCTOR", "ROLE_ADMIN")
+                        .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/topics/**").hasAnyAuthority("ROLE_INSTRUCTOR", "ROLE_ADMIN")
+                        .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/topics/**").hasAnyAuthority("ROLE_INSTRUCTOR", "ROLE_ADMIN")
+
+                        // Course management (Instructor & Admin only)
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/courses/**").hasAnyAuthority("ROLE_INSTRUCTOR", "ROLE_ADMIN")
+                        .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/courses/**").hasAnyAuthority("ROLE_INSTRUCTOR", "ROLE_ADMIN")
+                        .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/courses/**").hasAnyAuthority("ROLE_INSTRUCTOR", "ROLE_ADMIN")
+
+                        // Admin panel
+                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+
+                        // Quizzes, Enrollments, Progress (Authenticated users)
+                        .requestMatchers("/api/quizzes/**").hasAnyAuthority("ROLE_STUDENT", "ROLE_INSTRUCTOR", "ROLE_ADMIN")
+                        .requestMatchers("/api/enrollments/**").hasAnyAuthority("ROLE_STUDENT", "ROLE_INSTRUCTOR", "ROLE_ADMIN")
+                        .requestMatchers("/api/progress/**").hasAnyAuthority("ROLE_STUDENT", "ROLE_INSTRUCTOR", "ROLE_ADMIN")
+
+                        // Role-specific analytics
                         .requestMatchers("/api/analytics/student").hasAuthority("ROLE_STUDENT")
                         .requestMatchers("/api/analytics/instructor").hasAuthority("ROLE_INSTRUCTOR")
                         .requestMatchers("/api/analytics/admin").hasAuthority("ROLE_ADMIN")

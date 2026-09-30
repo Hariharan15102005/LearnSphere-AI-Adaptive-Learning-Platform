@@ -86,12 +86,7 @@ public class AuthService {
         user.setPhone(request.getPhone());
         user.setBio(request.getBio());
         user.setIsActive(true);
-        
-        // OTP Setup
-        String otp = generateVerificationCode();
-        user.setVerificationCode(otp);
-        user.setVerificationCodeExpiry(java.time.LocalDateTime.now().plusMinutes(15));
-        user.setVerified(false);
+        user.setVerified(true); // Auto-verified: eligible to login immediately
 
         // Create role-specific profile with proper mapping
         if (request.getRole() == Role.STUDENT) {
@@ -108,21 +103,20 @@ public class AuthService {
         // Save user (cascade will save Student/Instructor)
         user = userRepository.save(user);
 
-        // Send OTP Email
-        emailService.sendVerificationEmail(user.getEmail(), user.getName(), otp);
-        
-        log.info("User registered. OTP sent to: {}", user.getEmail());
+        log.info("User registered successfully: {}", user.getEmail());
 
         return AuthResponse.builder()
                 .userId(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
                 .role(user.getRole())
-                .message("Account created. Please verify your email.") 
+                .message("Account created successfully! You can now sign in.") 
                 .build();
     }
 
-    /** \n * Authenticate user and generate JWT tokens\n */
+    /**
+     * Authenticate user and generate JWT tokens
+     */
     public AuthResponse login(LoginRequest request) {
         try {
             log.info("Login attempt for email: {}", request.getEmail());
@@ -131,33 +125,8 @@ public class AuthService {
             User user = userRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> {
                         log.error("User not found with email: {}", request.getEmail());
-                        return new RuntimeException("User not found with email: " + request.getEmail());
+                        return new RuntimeException("Invalid email or password");
                     });
-            
-            // Check Verification
-            // Check Verification
-            if (!user.isVerified()) {
-                // Check if code is expired - if so, resend it automatically
-                if (user.getVerificationCodeExpiry() == null || 
-                    user.getVerificationCodeExpiry().isBefore(java.time.LocalDateTime.now())) {
-                    
-                    String otp = generateVerificationCode();
-                    user.setVerificationCode(otp);
-                    user.setVerificationCodeExpiry(java.time.LocalDateTime.now().plusMinutes(15));
-                    userRepository.save(user); // Validate this save doesn't break transaction
-                    
-                    try {
-                        emailService.sendVerificationEmail(user.getEmail(), user.getName(), otp);
-                        log.info("Expired OTP regenerated and sent for user: {}", user.getEmail());
-                        throw new RuntimeException("Account not verified. A new verification code has been sent to your email.");
-                    } catch (Exception e) {
-                        log.error("Failed to send OTP", e);
-                         throw new RuntimeException("Account not verified. Failed to resend verification code.");
-                    }
-                }
-                
-                throw new RuntimeException("Account not verified. Please verify your email.");
-            }
 
             log.info("User found: {}, attempting authentication", user.getEmail());
 
@@ -295,18 +264,6 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (user.isVerified()) {
-             throw new RuntimeException("Account already verified");
-        }
-
-        if (user.getVerificationCode() == null || !user.getVerificationCode().equals(code)) {
-            throw new RuntimeException("Invalid verification code");
-        }
-
-        if (user.getVerificationCodeExpiry().isBefore(java.time.LocalDateTime.now())) {
-            throw new RuntimeException("Verification code expired");
-        }
-
         user.setVerified(true);
         user.setVerificationCode(null);
         user.setVerificationCodeExpiry(null);
@@ -314,19 +271,7 @@ public class AuthService {
     }
     
     public void resendVerificationCode(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        if (user.isVerified()) {
-            throw new RuntimeException("Account already verified");
-        }
-        
-        String otp = generateVerificationCode();
-        user.setVerificationCode(otp);
-        user.setVerificationCodeExpiry(java.time.LocalDateTime.now().plusMinutes(15));
-        userRepository.save(user);
-        
-        emailService.sendVerificationEmail(user.getEmail(), user.getName(), otp);
+        log.info("Email verification is disabled; resend request ignored for {}", email);
     }
 
     /** \n * Refresh access token using valid refresh token\n */

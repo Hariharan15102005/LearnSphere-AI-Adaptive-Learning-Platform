@@ -19,6 +19,10 @@ import java.util.Map;
 public class InstructorController {
 
     private final com.example.skillforge.service.EmailService emailService;
+    private final com.example.skillforge.repository.InstructorRepository instructorRepository;
+    private final com.example.skillforge.repository.CourseRepository courseRepository;
+    private final com.example.skillforge.repository.EnrollmentRepository enrollmentRepository;
+    private final com.example.skillforge.repository.ReviewRepository reviewRepository;
 
     /**
      * Get instructor dashboard data
@@ -48,10 +52,21 @@ public class InstructorController {
     @GetMapping("/courses")
     @PreAuthorize("hasRole('INSTRUCTOR')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCourses(Authentication authentication) {
+        String email = authentication.getName();
+        com.example.skillforge.model.entity.Instructor instructor = instructorRepository.findAll().stream()
+                .filter(i -> i.getUser() != null && email.equals(i.getUser().getEmail()))
+                .findFirst()
+                .orElse(null);
+
+        long totalCourses = 0;
+        if (instructor != null) {
+            totalCourses = courseRepository.findByInstructorId(instructor.getId()).size();
+        }
+
         Map<String, Object> data = new HashMap<>();
         data.put("message", "Instructor Courses");
         data.put("user", authentication.getName());
-        data.put("totalCourses", 8);
+        data.put("totalCourses", totalCourses);
         
         return ResponseEntity.ok(ApiResponse.success("Instructor courses", data));
     }
@@ -62,11 +77,49 @@ public class InstructorController {
     @GetMapping("/analytics")
     @PreAuthorize("hasRole('INSTRUCTOR')")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getAnalytics(Authentication authentication) {
+        String email = authentication.getName();
+        com.example.skillforge.model.entity.Instructor instructor = instructorRepository.findAll().stream()
+                .filter(i -> i.getUser() != null && email.equals(i.getUser().getEmail()))
+                .findFirst()
+                .orElse(null);
+
+        long totalStudents = 0;
+        long activeCourses = 0;
+        double completionRate = 0.0;
+        double averageRating = 0.0;
+
+        if (instructor != null) {
+            java.util.List<com.example.skillforge.model.entity.Course> courses = courseRepository.findByInstructorId(instructor.getId());
+            activeCourses = courses.stream().filter(c -> Boolean.TRUE.equals(c.getIsPublished())).count();
+            
+            Long studentsCount = enrollmentRepository.countTotalStudentsByInstructor(instructor.getId());
+            totalStudents = studentsCount != null ? studentsCount : 0;
+
+            java.util.List<Long> courseIds = courses.stream().map(com.example.skillforge.model.entity.Course::getId).collect(java.util.stream.Collectors.toList());
+            if (!courseIds.isEmpty()) {
+                java.util.List<com.example.skillforge.model.entity.Enrollment> enrollments = enrollmentRepository.findByCourseIdIn(courseIds);
+                if (!enrollments.isEmpty()) {
+                    long completedCount = enrollments.stream().filter(e -> Boolean.TRUE.equals(e.getIsCompleted())).count();
+                    completionRate = Math.round((completedCount * 100.0 / enrollments.size()) * 10.0) / 10.0;
+                }
+            }
+
+            if (!courseIds.isEmpty()) {
+                averageRating = courseIds.stream()
+                        .map(reviewRepository::getAverageRating)
+                        .filter(r -> r != null && r > 0.0)
+                        .mapToDouble(Double::doubleValue)
+                        .average()
+                        .orElse(0.0);
+                averageRating = Math.round(averageRating * 10.0) / 10.0;
+            }
+        }
+
         Map<String, Object> data = new HashMap<>();
-        data.put("totalStudents", 150);
-        data.put("activeCourses", 8);
-        data.put("completionRate", 78.5);
-        data.put("averageRating", 4.6);
+        data.put("totalStudents", totalStudents);
+        data.put("activeCourses", activeCourses);
+        data.put("completionRate", completionRate);
+        data.put("averageRating", averageRating);
         
         return ResponseEntity.ok(ApiResponse.success("Instructor analytics", data));
     }

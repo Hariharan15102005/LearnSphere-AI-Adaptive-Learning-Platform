@@ -21,6 +21,7 @@ import { adaptiveService } from "../../services/adaptiveService";
 import { progressService } from "../../services/progressService";
 import { enrollmentService } from "../../services/enrollmentService";
 import { topicService } from "../../services/topicService";
+import { quizStatisticsService } from "../../services/quizStatisticsService";
 
 import Card from "../common/Card";
 import Loader from "../common/Loader";
@@ -38,6 +39,7 @@ export default function StudentDashboard() {
 
   const [courses, setCourses] = useState([]);
   const [enrollments, setEnrollments] = useState([]); // progress + lastAccessed
+  const [quizStats, setQuizStats] = useState(null);
   const [nextSuggestion, setNextSuggestion] = useState(null);
   const [suggestedCourseId, setSuggestedCourseId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -158,9 +160,20 @@ export default function StudentDashboard() {
         console.log('📊 Progress API Response:', progResp);
         console.log('📊 Extracted Progress List:', progressList);
         setEnrollments(Array.isArray(progressList) ? progressList : []);
+
+        // 2b) Fetch actual student quiz statistics (scores & attempts)
+        try {
+          const qResp = await quizStatisticsService.getOverallQuizStatistics(user.studentId);
+          const qData = qResp?.data ?? qResp;
+          setQuizStats(qData);
+        } catch (qErr) {
+          console.error('Failed to load overall quiz statistics:', qErr);
+          setQuizStats(null);
+        }
       } else {
         console.error('No studentId found for user:', user);
         setEnrollments([]);
+        setQuizStats(null);
       }
 
       // 3) AI Suggested Topic — using MOST RECENTLY ACCESSED COURSE
@@ -419,7 +432,40 @@ export default function StudentDashboard() {
       <DashboardOverview user={user} enrollments={enrollments} courses={courses} />
 
       {/* Student AI Skill & Telemetry Risk Section */}
-      <StudentSkillAndRiskSection studentName={user?.name} />
+      {(() => {
+        // Genuine completed courses only
+        const genuinelyCompletedCourseTitles = enrollments
+          .filter(p => (p.isCompleted === true || p.completionPercentage >= 100 || p.progressPercent >= 100))
+          .map(p => {
+            const matched = courses.find(c => c.id === (p.courseId || p.course?.id));
+            return matched?.title || p.courseTitle || null;
+          })
+          .filter(Boolean);
+
+        // Active enrolled courses (not yet completed)
+        const activeEnrolledTitles = courses
+          .filter(c => c.isEnrolled && !genuinelyCompletedCourseTitles.includes(c.title))
+          .map(c => c.title);
+
+        const avgCompletion = enrollments.length > 0
+          ? Math.round(enrollments.reduce((acc, curr) => acc + (curr.completionPercentage || curr.progressPercent || 0), 0) / enrollments.length)
+          : 0;
+
+        // Real quiz score from actual quiz statistics (null if no quiz attempts exist)
+        const realAvgQuizScore = (quizStats && quizStats.totalQuizzesTaken > 0 && quizStats.averageScore != null)
+          ? Math.round(quizStats.averageScore)
+          : null;
+
+        return (
+          <StudentSkillAndRiskSection
+            studentName={user?.name}
+            completedCourses={genuinelyCompletedCourseTitles}
+            activeCourses={activeEnrolledTitles}
+            completionRate={avgCompletion}
+            avgQuizScore={realAvgQuizScore}
+          />
+        );
+      })()}
 
       {/* Progress Section */}
       <ProgressTracker />

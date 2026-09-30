@@ -139,12 +139,12 @@ export const register = createAsyncThunk(
         )
       }
 
-      toast.success(message || 'Registration successful! Please verify your email.')
+      toast.success(message || 'Account created successfully! You can now sign in.')
       return {
         token,
         refreshToken,
         user: { userId, studentId, name, email, role, profileImage },
-        message
+        message: message || 'Account created successfully! You can now sign in.'
       }
 
     } catch (error) {

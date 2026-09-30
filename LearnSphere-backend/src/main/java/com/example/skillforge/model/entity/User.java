@@ -50,9 +50,9 @@ public class User {
     private String resetToken;
     private LocalDateTime resetTokenExpiry;
 
-    // OTP Verification
+    // Account Verification
     @Column(nullable = false)
-    private boolean isVerified = false; // Default to false
+    private boolean isVerified = true; // Auto-verified upon registration
     private String verificationCode;
     private LocalDateTime verificationCodeExpiry;
 

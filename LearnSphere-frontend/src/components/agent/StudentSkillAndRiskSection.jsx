@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Target, Activity, Sparkles, CheckCircle, AlertTriangle, ChevronRight, Bot, Zap } from 'lucide-react';
 
-export default function StudentSkillAndRiskSection({ studentName = "Student", avgQuizScore = 82, completionRate = 75, hoursSpent = 12 }) {
+export default function StudentSkillAndRiskSection({
+  studentName = "Student",
+  avgQuizScore = null,
+  completionRate = 0,
+  hoursSpent = 0,
+  completedCourses = [],
+  activeCourses = []
+}) {
   const [targetRole, setTargetRole] = useState('AI Agent Developer');
   const [analyzingSkill, setAnalyzingSkill] = useState(false);
   const [skillResult, setSkillResult] = useState(null);
@@ -21,10 +28,10 @@ export default function StudentSkillAndRiskSection({ studentName = "Student", av
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          avgQuizScore: Number(avgQuizScore),
-          completionRatePct: Number(completionRate),
-          totalTimeHours: Number(hoursSpent),
-          quizAttemptsAvg: 1.2,
+          avgQuizScore: avgQuizScore !== null && avgQuizScore !== undefined ? Number(avgQuizScore) : null,
+          completionRatePct: Number(completionRate || 0),
+          totalTimeHours: Number(hoursSpent || 0),
+          quizAttemptsAvg: avgQuizScore !== null ? 1.0 : 0.0,
           consecutiveFailures: 0
         })
       });
@@ -46,8 +53,11 @@ export default function StudentSkillAndRiskSection({ studentName = "Student", av
         body: JSON.stringify({
           targetRole,
           userProfile: {
-            completedCourses: ["RAG Architecture", "Python REST APIs"],
-            quizScores: { RAG: avgQuizScore }
+            completedCourses: Array.isArray(completedCourses) ? completedCourses : [],
+            activeCourses: Array.isArray(activeCourses) ? activeCourses : [],
+            quizScores: avgQuizScore !== null && avgQuizScore !== undefined
+              ? { "Overall Average Score": avgQuizScore }
+              : {}
           }
         })
       });

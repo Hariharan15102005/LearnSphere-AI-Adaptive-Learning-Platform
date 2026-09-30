@@ -263,12 +263,19 @@ public class AnalyticsService {
                 roleDist.add(AnalyticsDTO.PieMetric.builder().name("Admins")
                                 .value(userRepository.countByRole(Role.ADMIN)).build());
 
-                // 2. Platform Growth
-                List<Object[]> growthData = userRepository.findUserGrowthByMonth();
-                List<AnalyticsDTO.TimeMetric> growth = growthData.stream()
-                                .map(obj -> AnalyticsDTO.TimeMetric.builder()
-                                                .time((String) obj[0])
-                                                .value((Long) obj[1])
+                // 2. Platform Growth (Cross-database compatible)
+                java.util.Map<String, Long> monthlyCounts = userRepository.findAll().stream()
+                                .filter(u -> u.getCreatedAt() != null)
+                                .collect(Collectors.groupingBy(
+                                                u -> u.getCreatedAt().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM")),
+                                                java.util.TreeMap::new,
+                                                Collectors.counting()
+                                ));
+
+                List<AnalyticsDTO.TimeMetric> growth = monthlyCounts.entrySet().stream()
+                                .map(e -> AnalyticsDTO.TimeMetric.builder()
+                                                .time(e.getKey())
+                                                .value(e.getValue())
                                                 .build())
                                 .limit(12)
                                 .collect(Collectors.toList());
